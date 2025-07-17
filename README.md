@@ -16,99 +16,89 @@
 
 ---
 
-<p align="center"> Few lines describing your project.
+<p align="center"> Aplicacion simple para gestionar la reserva de un SUM
     <br> 
 </p>
 
 ## 📝 Table of Contents
 
-- [About](#about)
-- [Getting Started](#getting_started)
-- [Deployment](#deployment)
-- [Usage](#usage)
-- [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
+- [Acerca](#about)
+- [Comenzando](#getting_started)
+- [Software usado](#built_using)
 - [Authors](#authors)
-- [Acknowledgments](#acknowledgement)
 
-## 🧐 About <a name = "about"></a>
+## 🧐 Acerca <a name = "about"></a>
 
-Write about 1-2 paragraphs describing the purpose of your project.
+Esta aplicación de desarrolló para la gestion y uso del SUM de la biblioteca de la FADU-UBA.
 
-## 🏁 Getting Started <a name = "getting_started"></a>
+## 🏁 Comenzando <a name = "getting_started"></a>
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
+Solo requiere hacer una copia del repositorio en la maquina local.
 
-### Prerequisites
-
-What things you need to install the software and how to install them.
-
-```
-Give examples
-```
+### Pre-requisitos
+Tener instalado un servidor web , php e instalar via composer las librerias phpmailer , boostrap y fullcalendar
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running.
+Solo tenes que poner todo en un directorio accesible por tu servidor web y listo.
+Tenes que crear ademas un archivo de configuracion llamado config.php que sea mas o menos asi :
 
-Say what the step will be
+```php
+// Configuración de la base de datos
+define('DB_HOST', 'localhost'); // db si es un contenedor Docker
+define('DB_NAME', 'nombre_base');
+define('DB_USER', 'user_base');
+define('DB_PASS', 'password_base');
 
+// Configuración de la zona horaria
+define('TIMEZONE', 'America/Argentina/Buenos_Aires');
+
+// Configuración de restricciones de reservas
+define('HORA_INICIO_PERMITIDA', '09:00:00');
+define('HORA_FIN_PERMITIDA', '21:00:00');
+define('DIAS_PERMITIDOS', [1, 2, 3, 4, 5]); // Lunes a viernes
+define('ANTICIPACION_HORAS', 36); // Anticipación mínima en horas
+
+// Configuración de directorio de uploads
+define('UPLOAD_DIR', 'uploads/');
+define('MAX_FILE_SIZE', 2 * 1024 * 1024); // 2MB
+
+// Configuración de PHPMailer (SMTP)
+define('SMTP_HOST', 'smtp.host_a_user');
+define('SMTP_USERNAME', 'usuario_smtp');
+define('SMTP_PASSWORD', 'contraseña_smtp');
+define('SMTP_PORT', 587);
+define('SMTP_ENCRYPTION', 'tls');
+define('SMTP_FROM_EMAIL', 'usuario@que_envia_mail');
+define('SMTP_FROM_NAME', 'Sistema de Reservas');
+define('ENCARGADO_EMAIL', 'usuario@que_envia_mail');
+define('ENCARGADO_NAME', 'Encargado de Aula');
+
+// Otras configuraciones
+define('MAX_ASISTENTES', 50);
+define('TELEFONO_REGEX', '/^[0-9\s\+\(\)\-]{7,20}$/');
+
+// Credenciales del Encargado
+define('ENCARGADO_USER', 'admin');
+// Para generar el hash, ejecuta una vez: echo password_hash('tu_contraseña_segura', PASSWORD_DEFAULT);
+// Y pega el resultado aquí.
+define('ENCARGADO_PASS_HASH', 'hash de la contraseña');
+
+/**
+ * Switch general del sistema de reservas.
+ * true: El sistema funciona normalmente.
+ * false: Se deshabilita la creación de nuevas reservas (modo vacaciones/mantenimiento).
+ */
+define('SISTEMA_HABILITADO', true);
 ```
-Give the example
-```
 
-And repeat
+## ⛏️ Software Usado <a name = "built_using"></a>
 
-```
-until finished
-```
+- [MariaDb] - Database
+- [PHP - HTML] - Server Framework
+- [CSS] - Web Framework
 
-End with an example of getting some data out of the system or using it for a little demo.
+## ✍️ Autor <a name = "authors"></a>
 
-## 🔧 Running the tests <a name = "tests"></a>
+- [@LopezAlejandro](https://github.com/LopezAlejandro) - Idea & Trabajo inicial
 
-Explain how to run the automated tests for this system.
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## 🎈 Usage <a name="usage"></a>
-
-Add notes about how to use the system.
-
-## 🚀 Deployment <a name = "deployment"></a>
-
-Add additional notes about how to deploy this on a live system.
-
-## ⛏️ Built Using <a name = "built_using"></a>
-
-- [MongoDB](https://www.mongodb.com/) - Database
-- [Express](https://expressjs.com/) - Server Framework
-- [VueJs](https://vuejs.org/) - Web Framework
-- [NodeJs](https://nodejs.org/en/) - Server Environment
-
-## ✍️ Authors <a name = "authors"></a>
-
-- [@kylelobo](https://github.com/kylelobo) - Idea & Initial work
-
-See also the list of [contributors](https://github.com/kylelobo/The-Documentation-Compendium/contributors) who participated in this project.
-
-## 🎉 Acknowledgements <a name = "acknowledgement"></a>
-
-- Hat tip to anyone whose code was used
-- Inspiration
-- References
