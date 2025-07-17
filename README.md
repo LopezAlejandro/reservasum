@@ -17,6 +17,7 @@
 ---
 
 <p align="center"> Aplicacion simple para gestionar la reserva de un SUM
+<p align="center"> Aplicacion simple para gestionar la reserva de un SUM
     <br> 
 </p>
 
@@ -99,6 +100,6 @@ define('SISTEMA_HABILITADO', true);
 - [CSS] - Web Framework
 
 ## ✍️ Autor <a name = "authors"></a>
+## ✍️ Autor <a name = "authors"></a>
 
 - [@LopezAlejandro](https://github.com/LopezAlejandro) - Idea & Trabajo inicial
-
