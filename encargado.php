@@ -1,58 +1,55 @@
 <?php
 require __DIR__ . '/bootstrap.php';
 
-// Verificamos si la variable de sesión existe y es verdadera.
-// Si no, redirigimos al login.
+// 1. Proteger la página: verificar si el usuario ha iniciado sesión.
 if (!isset($_SESSION['user_is_encargado']) || $_SESSION['user_is_encargado'] !== true) {
     header('Location: login.php');
     exit;
 }
 
+// 2. Conexión a la base de datos
 $pdo = get_pdo_connection();
 
-// --- INICIO DE LA MODIFICACIÓN ---
+// 3. Obtener solo las reservas pendientes para la tabla
 $estado_filtro = 'pendiente';
-
-// Lógica de paginación
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 15;
 $offset = ($page - 1) * $perPage;
 
-// Contar total de reservas PENDIENTES para la paginación
-$countStmt = $pdo->prepare("SELECT COUNT(id) FROM reservas WHERE estado = ?");
-$countStmt->execute([$estado_filtro]);
+// Contar el total de reservas pendientes para la paginación
+$countStmt = $pdo->prepare("SELECT COUNT(id) FROM reservas WHERE estado = :estado");
+$countStmt->execute([':estado' => $estado_filtro]);
 $totalRes = $countStmt->fetchColumn();
+$totalPages = $totalRes > 0 ? ceil($totalRes / $perPage) : 1;
 
-$totalPages = ceil($totalRes / $perPage);
-$totalPages = $totalPages > 0 ? $totalPages : 1;
-
-// --- INICIO DE LA CORRECCIÓN ---
-// Se estandariza la consulta para usar solo parámetros nombrados (:nombre)
+// Obtener la lista paginada de reservas pendientes
 $stmt = $pdo->prepare(
     "SELECT * FROM reservas WHERE estado = :estado 
      ORDER BY fecha ASC, hora_inicio ASC 
      LIMIT :limit OFFSET :offset"
 );
-
-// Se asignan los valores a los parámetros nombrados
 $stmt->bindValue(':estado', $estado_filtro, PDO::PARAM_STR);
 $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $reservas = $stmt->fetchAll();
-// --- FIN DE LA CORRECCIÓN ---
 
-// Variables para el calendario
+// 4. Obtener todos los feriados para la sección de gestión
+$feriadosStmt = $pdo->query("SELECT id, fecha, descripcion FROM feriados ORDER BY fecha ASC");
+$feriados = $feriadosStmt->fetchAll();
+
+// 5. Variables para la configuración del calendario
 $hora_inicio = defined('HORA_INICIO_PERMITIDA') ? HORA_INICIO_PERMITIDA : '08:00:00';
 $hora_fin = defined('HORA_FIN_PERMITIDA') ? HORA_FIN_PERMITIDA : '18:00:00';
 $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5];
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel del Administrador</title>
+    <title>Panel del Encargado</title>
     <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="vendor/fullcalendar/main.min.css" rel="stylesheet">
     <link href="assets/css/estilo.css" rel="stylesheet">
@@ -65,12 +62,14 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
         };
     </script>
 </head>
+
 <body>
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="text-center mb-0">Panel del Administrador</h2>
             <a href="logout.php" class="btn btn-outline-danger">Cerrar Sesión</a>
         </div>
+
         <div class="row">
             <div class="col-md-2"></div>
             <div class="col-md-8">
@@ -79,7 +78,9 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
             <div class="col-md-2"></div>
         </div>
 
-        <h4>Reservas (Página <?php echo $page; ?> de <?php echo $totalPages; ?>)</h4>
+        <!--div id="calendar" class="my-5"></div-->
+
+        <h4>Reservas Pendientes de Aprobación (Página <?php echo $page; ?> de <?php echo $totalPages; ?>)</h4>
         <div id="mensaje" class="mb-3"></div>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="reservasTable">
@@ -91,14 +92,13 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
                         <th>Motivo</th>
                         <th>Bibliografía</th>
                         <th>Estado</th>
-                        <th>Comentario</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($reservas)): ?>
                         <tr>
-                            <td colspan="8" class="text-center">No hay reservas para mostrar.</td>
+                            <td colspan="7" class="text-center">¡Excelente! No hay reservas pendientes.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($reservas as $reserva): ?>
@@ -114,15 +114,12 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
                                         -
                                     <?php endif; ?>
                                 </td>
-                                <td class="estado"><?php echo htmlspecialchars($reserva['estado']); ?></td>
-                                <td class="comentario text-truncate" style="max-width: 150px;" title="<?php echo htmlspecialchars($reserva['comentario'] ?: ''); ?>"><?php echo htmlspecialchars($reserva['comentario'] ?: '-'); ?></td>
+                                <td><span class="badge bg-warning text-dark"><?php echo htmlspecialchars($reserva['estado']); ?></span></td>
                                 <td class="acciones">
-                                    <?php if ($reserva['estado'] == 'pendiente'): ?>
+                                    <div class="d-flex flex-column gap-1">
                                         <button class="btn btn-success btn-sm confirmar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Confirmar</button>
                                         <button class="btn btn-danger btn-sm rechazar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Rechazar</button>
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -130,7 +127,7 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
                 </tbody>
             </table>
         </div>
-        
+
         <nav class="mt-4" aria-label="Navegación de páginas">
             <ul class="pagination justify-content-center">
                 <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
@@ -141,6 +138,63 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
                 </li>
             </ul>
         </nav>
+
+        <hr class="my-5">
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Gestión de Feriados</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-7">
+                        <h5>Feriados Actuales</h5>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-striped" id="tablaFeriados">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Descripción</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($feriados)): ?>
+                                        <tr>
+                                            <td colspan="3" class="text-center">No hay feriados cargados.</td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($feriados as $feriado): ?>
+                                            <tr data-id="<?php echo $feriado['id']; ?>">
+                                                <td><?php echo htmlspecialchars($feriado['fecha']); ?></td>
+                                                <td><?php echo htmlspecialchars($feriado['descripcion']); ?></td>
+                                                <td><button class="btn btn-danger btn-sm btn-eliminar-feriado" data-id="<?php echo $feriado['id']; ?>">Eliminar</button></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <h5>Agregar Nuevo Feriado</h5>
+                        <form id="formAgregarFeriado">
+                            <input type="hidden" name="action" value="agregar">
+                            <div class="mb-3">
+                                <label for="feriadoFecha" class="form-label">Fecha</label>
+                                <input type="date" class="form-control" id="feriadoFecha" name="fecha" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="feriadoDescripcion" class="form-label">Descripción</label>
+                                <input type="text" class="form-control" id="feriadoDescripcion" name="descripcion" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Agregar Feriado</button>
+                        </form>
+                    </div>
+                </div>
+                <div id="mensajeFeriados" class="mt-3"></div>
+            </div>
+        </div>
     </div>
 
     <div class="modal fade" id="reservaModal" tabindex="-1" aria-labelledby="reservaModalLabel" aria-hidden="true">
@@ -166,11 +220,12 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
             </div>
         </div>
     </div>
-    
+
     <script src="vendor/jquery/jquery.min.js"></script>
     <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="vendor/fullcalendar/main.min.js"></script>
     <script src="vendor/fullcalendar/locales/es.js"></script>
     <script src="assets/js/encargado.js" defer></script>
 </body>
+
 </html>

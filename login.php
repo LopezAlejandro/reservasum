@@ -15,7 +15,7 @@ $error = $_GET['error'] ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Panel del Encargado</title>
-    <link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="reserva/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <style>
         body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: #f8f9fa; }
         .login-card { max-width: 400px; width: 100%; }

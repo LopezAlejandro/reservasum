@@ -59,7 +59,8 @@ while (true) {
                         <li><strong>Fecha:</strong> " . htmlspecialchars($data['fecha']) . " de " . htmlspecialchars($data['hora_inicio']) . " a " . htmlspecialchars($data['hora_fin']) . "</li>
                         <li><strong>Motivo:</strong> " . htmlspecialchars($data['motivo']) . "</li>
                         <li><strong>Asistentes:</strong> " . htmlspecialchars($data['cantidad_asistentes']) . "</li>
-                    </ul>";
+                    </ul>
+		    <p>Para aceptar o rechazar la reseseva ir a <a href='https://biblioteca.fadu.uba.ar/reserva/login.php'>este enlace</a></p>";
                  // --- FIN DE LA MODIFICACIÓN ---
                  $success = App\Utils\Mailer::sendMail(ENCARGADO_EMAIL, ENCARGADO_NAME, $subject, $body);
                 break;

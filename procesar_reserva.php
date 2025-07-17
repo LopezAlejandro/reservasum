@@ -5,6 +5,13 @@ require __DIR__ . '/bootstrap.php';
 header('Content-Type: application/json');
 
 try {
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Verificamos el switch general antes de procesar nada.
+    if (defined('SISTEMA_HABILITADO') && SISTEMA_HABILITADO === false) {
+        // HTTP 503: Service Unavailable
+        throw new Exception('El sistema de reservas se encuentra temporalmente deshabilitado.', 503);
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
     // 1. Verificar método y token CSRF
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método no permitido.', 405);

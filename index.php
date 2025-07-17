@@ -1,5 +1,8 @@
 <?php
 require __DIR__ . '/bootstrap.php';
+// Leemos el estado del switch para usarlo en el HTML y JavaScript
+$sistema_habilitado = defined('SISTEMA_HABILITADO') ? SISTEMA_HABILITADO : true;
+
 $hora_inicio = defined('HORA_INICIO_PERMITIDA') ? HORA_INICIO_PERMITIDA : '08:00:00';
 $hora_fin = defined('HORA_FIN_PERMITIDA') ? HORA_FIN_PERMITIDA : '18:00:00';
 $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5];
@@ -25,7 +28,8 @@ $telefono_regex = defined('TELEFONO_REGEX') ? preg_replace('/^\/(.*)\/$/', '$1',
             horaFin: '<?php echo $hora_fin; ?>',
             diasPermitidos: <?php echo json_encode($dias_permitidos); ?>,
             anticipacionHoras: <?php echo $anticipacion_horas; ?>,
-            telefonoRegex: '<?php echo $telefono_regex; ?>'
+            telefonoRegex: '<?php echo $telefono_regex; ?>',
+            sistemaHabilitado: <?php echo json_encode($sistema_habilitado); ?>
         };
     </script>
 </head>
@@ -41,7 +45,7 @@ $telefono_regex = defined('TELEFONO_REGEX') ? preg_replace('/^\/(.*)\/$/', '$1',
                         <li>La sala no dispone de retroproyector.</li>
                         <li>Por reglamento, no se permite el ingreso con alimentos y/o bebidas.</li>
                         <li>Al finalizar la actividad el espacio debe mantenerse limpio y ordenado.</li>
-                        <li>La reserva deberá realizarse con al menos 48 horas hábiles de anticipación a la fecha requerida.</li>
+                        <li>La reserva deberá realizarse con al menos 24 horas hábiles de anticipación a la fecha requerida.</li>
                         <li>La Biblioteca enviará una respuesta acerca de la disponibilidad del espacio en la fecha y horario solicitado.</li>
                         <li>En caso de modificaciones de horario o suspensión del uso del espacio se solicita avisar de inmediato a <a href="mailto:biblio@fadu.uba.ar">biblio@fadu.uba.ar</a></li>
                     </ul>
@@ -51,6 +55,12 @@ $telefono_regex = defined('TELEFONO_REGEX') ? preg_replace('/^\/(.*)\/$/', '$1',
     </div>
     <div class="container mt-5">
         <h2 class="text-center">Ingreso de la solicitud de reserva</h2>
+        <?php if (!$sistema_habilitado): // <-- AÑADIMOS ESTE BLOQUE ?>
+        <div class="alert alert-warning text-center mt-4" role="alert">
+            <h4 class="alert-heading">Sistema Deshabilitado</h4>
+            <p>El sistema de solicitud de reservas se encuentra temporalmente fuera de servicio. Por favor, intente más tarde.</p>
+        </div>
+        <?php endif; ?>
         <div class="row">
             <div class="col-md-6">
                 <div id="calendar"></div>
@@ -90,11 +100,11 @@ $telefono_regex = defined('TELEFONO_REGEX') ? preg_replace('/^\/(.*)\/$/', '$1',
                         <input type="number" class="form-control" id="cantidad_asistentes" name="cantidad_asistentes" min="1" max="<?php echo $max_asistentes; ?>" required>
                     </div>
                     <div class="mb-3">
-                        <label for="fecha" class="form-label">Fecha de Reserva</label>
+                        <label for="fecha" class="form-label">Fecha de Reserva (Seleccione del calendario)</label>
                         <input type="date" class="form-control" id="fecha" name="fecha" readonly required>
                     </div>
                     <div class="mb-3">
-                        <label for="hora_inicio" class="form-label">Hora de Inicio</label>
+                        <label for="hora_inicio" class="form-label">Hora de Inicio (Arrastre en el calendario)</label>
                         <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" readonly required>
                     </div>
                     <div class="mb-3">

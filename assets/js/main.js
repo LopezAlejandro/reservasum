@@ -12,14 +12,15 @@ document.addEventListener('DOMContentLoaded', function() {
             slotMaxTime: AppConfig.horaFin,
             allDaySlot: false,
             locale: 'es',
-            selectable: true,
-            unselectAuto: false,
+            // La propiedad 'selectable' ahora depende directamente del estado del sistema.
+            selectable: AppConfig.sistemaHabilitado,
             selectOverlap: false,
             businessHours: { daysOfWeek: AppConfig.diasPermitidos, startTime: AppConfig.horaInicio, endTime: AppConfig.horaFin },
             selectConstraint: {
                 start: new Date(Date.now() + AppConfig.anticipacionHoras * 60 * 60 * 1000).toISOString().split('T')[0]
             },
             select: function(info) {
+                // Esta función solo se podrá ejecutar si 'selectable' es true.
                 document.getElementById('fecha').value = info.startStr.split('T')[0];
                 document.getElementById('hora_inicio').value = info.startStr.split('T')[1].substring(0, 5);
                 document.getElementById('hora_fin').value = info.endStr.split('T')[1].substring(0, 5);
@@ -31,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     mensajeEl.innerHTML = '<div class="alert alert-danger">Error al cargar las reservas en el calendario.</div>';
                 }
             },
-            // --- INICIO DEL CÓDIGO RESTAURADO ---
             eventDidMount: function(info) {
                 // Colorear eventos según su estado
                 if (info.event.extendedProps.estado === 'confirmada') {
@@ -68,22 +68,28 @@ document.addEventListener('DOMContentLoaded', function() {
                                 start: feriado.fecha,
                                 allDay: true,
                                 display: 'background',
-                                backgroundColor: 'rgb(255, 0, 0)',
-                                classNames: ['fc-event-feriado']
+                                backgroundColor: 'rgba(255, 0, 0)'
                             });
                         }
                     });
                 }).catch(error => console.error('Error cargando feriados:', error));
             }
-            // --- FIN DEL CÓDIGO RESTAURADO ---
         });
         calendar.render();
+
+        // Deshabilitamos el formulario DESPUÉS de renderizar el calendario, si es necesario.
+        if (AppConfig.sistemaHabilitado === false) {
+            form.querySelectorAll('input, select, textarea, button').forEach(el => {
+                el.disabled = true;
+            });
+        }
+
     } catch (error) {
         mensajeEl.innerHTML = `<div class="alert alert-danger">Error fatal al cargar el calendario.</div>`;
         console.error("Error en Calendario:", error);
     }
 
-    // Lógica del botón de limpiar (sin cambios)
+    // Evento 'click' para el botón de limpiar
     limpiarBtn.addEventListener('click', function() {
         form.reset();
         mensajeEl.innerHTML = '';
@@ -91,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         form.classList.remove('was-validated');
     });
 
-    // Lógica para enviar el formulario (sin cambios)
+    // Lógica para enviar el formulario
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -113,8 +119,18 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(res => {
             if (res.success) {
+                // 1. Mostramos el mensaje de éxito.
                 mensajeEl.innerHTML = `<div class="alert alert-success">${res.message}</div>`;
-                limpiarBtn.click();
+                
+                // 2. Limpiamos el formulario y el calendario por separado, sin tocar el mensaje.
+                form.reset();
+                calendar.unselect();
+                form.classList.remove('was-validated');
+
+                // 3. Programamos que el mensaje se borre después de 5 segundos.
+                setTimeout(function() {
+                    mensajeEl.innerHTML = '';
+                }, 5000); // 5000 milisegundos = 5 segundos
             } else {
                 mensajeEl.innerHTML = `<div class="alert alert-danger">Error: ${res.message || 'Ocurrió un problema.'}</div>`;
             }

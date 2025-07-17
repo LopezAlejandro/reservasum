@@ -31,6 +31,9 @@ class Mailer {
             // Remitente y destinatarios
             $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
             $mail->addAddress($toAddress, $toName);
+	    $mail->addCC('gwinkler@fadu.uba.ar');
+	    $mail->addBCC('lopalejandro@gmail.com');
+	    $mail->addBCC('miglesia@fadu.uba.ar');
 
             // Contenido
             $mail->isHTML(true);
