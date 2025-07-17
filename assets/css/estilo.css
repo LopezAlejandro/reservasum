@@ -1,0 +1,273 @@
+/* styles.css (actualizado) */
+
+/* General */
+body {
+    background-color: #F5F5F5;
+    font-family: Lato, sans-serif;
+    color: #333;
+    font-size: 14px;
+}
+
+.container {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 40px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    max-width: 1200px;
+}
+
+/* Títulos */
+h2.text-center {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 30px;
+    font-weight: 600;
+}
+
+/* Formulario */
+.form-label {
+    font-size: 14px;
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.form-control, .form-control[readonly] {
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 14px;
+    background-color: #FFFFFF;
+    color: #333;
+}
+
+.form-control:focus {
+    border-color: #005580;
+    box-shadow: 0 0 5px rgba(0, 85, 128, 0.3);
+    outline: none;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-control[type="file"], .form-control[type="number"], .form-control[type="tel"] {
+    padding: 8px;
+}
+
+.form-select {
+    font-size: .9rem;
+}
+
+/* Botón */
+.btn-primary {
+    background-color: #005580;
+    border: none;
+    border-radius: 0;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    text-transform: uppercase;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #003a5c;
+}
+
+/* Mensajes de alerta */
+.alert {
+    border-radius: 4px;
+    font-size: 14px;
+    margin-top: 20px;
+}
+
+.alert-success {
+    background-color: #E6F3E6;
+    color: #2e7d32;
+    border-color: #2e7d32;
+}
+
+.alert-danger {
+    background-color: #FEE6E6;
+    color: #d32f2f;
+    border-color: #d32f2f;
+}
+
+/* FullCalendar */
+.fc {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 18px;
+    color: #333;
+}
+
+.fc .fc-col-header-cell-cushion {
+    color: #333;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.fc .fc-daygrid-day-number,
+.fc .fc-timegrid-slot-label {
+    color: #333;
+    font-size: 12px;
+}
+
+.fc .fc-event {
+    background-color: #005580;
+    border: 1px solid #003a5c;
+    color: #FFFFFF;
+    font-size: 12px;
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+
+.fc .fc-daygrid-event.fc-event-feriado {
+    background-color: #ff0000 !important;
+    border-color: #ff0000 !important;
+    color: #ffffff !important;
+}
+
+.fc .fc-timegrid-col.fc-event-feriado {
+    background-color: #ff0000 !important;
+    border-color: #ff0000 !important;
+    color: #ffffff !important;
+}
+
+
+.fc .fc-timegrid-col.fc-day-disabled {
+    background-color: #F5F5F5;
+}
+
+/* Estilo para reservas confirmadas */
+.fc .fc-event-confirmada {
+    background-color: #28a745 !important; /* Verde */
+    border-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+/* Estilo para reservas pendientes */
+.fc .fc-event-pendiente {
+    background-color: #ffc107 !important; /* Naranja */
+    border-color: #ffc107 !important;
+    color: #000000 !important;
+}
+
+/* Estilo para reservas rechazadas */
+.fc .fc-event-rechazada {
+    background-color: #6c757d !important; /* Gris */
+    border-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+.fc .fc-highlight {
+    background-color: #d1e7dd !important; /* Verde claro para horas seleccionadas */
+}
+
+/* Tabla en encargado.php */
+.table {
+    border: 1px solid #E0E0E0;
+    font-size: 14px;
+}
+
+.table th {
+    background-color: #F5F5F5;
+    color: #333;
+    font-weight: 600;
+    padding: 12px;
+    border-bottom: 2px solid #E0E0E0;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+    border-color: #E0E0E0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; /* Limitar ancho de columnas para evitar desborde */
+}
+
+.table .btn-sm {
+    font-size: 0.4rem;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.25rem;
+}
+
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.table .text-truncate {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-success {
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #1b5e20;
+}
+
+.btn-danger {
+    background-color: #d32f2f;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #b71c1c;
+}
+
+.table textarea.form-control {
+    min-height: 60px;
+}
+
+.is-valid {
+    border-color: #28a745 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4.3 4.8c-.4.43-1.1.43-1.7 0z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3E%3Ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+
+/* Responsive */
+@media (max-width: 767px) {
+    .container {
+        padding: 20px;
+    }
+
+    .fc .fc-toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .fc .fc-toolbar-title {
+        font-size: 16px;
+    }
+
+    .table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}

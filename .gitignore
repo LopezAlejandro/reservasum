@@ -1,0 +1,12 @@
+# PHP
+
+vendor/*
+config.php
+cache/*
+uploads/*
+composer.lock
+docker-compose.yml
+Dockerfile
+
+app-reservas.tar
+generar_hash.php
