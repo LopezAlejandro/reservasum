@@ -8,7 +8,7 @@ try {
     if (!isset($_SESSION['user_is_encargado']) || $_SESSION['user_is_encargado'] !== true) {
         throw new Exception('Acceso denegado.', 403);
     }
-    
+
     // --- INICIO DE LA CORRECCIÓN ---
     // Verificar el token de seguridad para todas las acciones POST
     if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {

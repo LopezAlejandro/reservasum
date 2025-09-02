@@ -5,32 +5,28 @@ require __DIR__ . '/bootstrap.php';
 header('Content-Type: application/json');
 
 try {
-    // Verificaciones de seguridad (método, CSRF y sesión de encargado)
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método no permitido.', 405);
     }
     if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
         throw new Exception('Error de validación (CSRF).', 403);
     }
-    if (!isset($_SESSION['user_is_encargado']) || $_SESSION['user_is_encargado'] !== true) {
-        throw new Exception('Acceso no autorizado. Debe iniciar sesión como encargado.', 401);
-    }
 
-    // Recolección y validación de datos
+    // TODO: Implementar un sistema de autenticación para asegurarse de que solo el encargado pueda ejecutar esta acción.
+
     $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
     $accion = isset($_POST['accion']) ? $_POST['accion'] : '';
     $comentario = isset($_POST['comentario']) ? trim($_POST['comentario']) : '';
 
-    if ($id <= 0 || !in_array($accion, ['confirmar', 'rechazar', 'cancelar'])) {
-        throw new Exception('La acción solicitada no es válida.');
+    if ($id <= 0 || !in_array($accion, ['confirmar', 'rechazar'])) {
+        throw new Exception('Parámetros inválidos.');
     }
-
-    if (in_array($accion, ['rechazar', 'cancelar']) && empty($comentario)) {
-        throw new Exception('El comentario es obligatorio al rechazar o cancelar una reserva.');
+    if ($accion === 'rechazar' && empty($comentario)) {
+        throw new Exception('El comentario es obligatorio al rechazar una reserva.');
     }
 
     $pdo = get_pdo_connection();
-
+    
     // Obtener datos de la reserva para el correo
     $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ?");
     $stmt->execute([$id]);
@@ -39,28 +35,12 @@ try {
         throw new Exception('Reserva no encontrada.', 404);
     }
 
-    // Lógica de negocio con un 'switch' para determinar el nuevo estado
-    $estado = '';
-    switch ($accion) {
-        case 'confirmar':
-            $estado = 'confirmada';
-            break;
-        case 'rechazar':
-            $estado = 'rechazada';
-            break;
-        case 'cancelar':
-            if ($reserva['estado'] !== 'confirmada') {
-                throw new Exception('Solo se pueden cancelar reservas que ya están confirmadas.', 409);
-            }
-            $estado = 'cancelada';
-            break;
-    }
-
-    // Actualizar la reserva en la base de datos
+    // Actualizar la reserva
+    $estado = ($accion === 'confirmar') ? 'confirmada' : 'rechazada';
     $stmt = $pdo->prepare("UPDATE reservas SET estado = ?, comentario = ? WHERE id = ?");
     $stmt->execute([$estado, $comentario, $id]);
 
-    // Despachar el trabajo para notificar al usuario por correo
+    // Despachar trabajo para notificar al usuario
     \App\Queue\Job::dispatch('emails', [
         'type' => 'actualizacion_reserva',
         'data' => [
@@ -75,12 +55,11 @@ try {
         ]
     ]);
 
-    // Enviar respuesta de éxito
     echo json_encode(['success' => true, 'message' => "Reserva $estado. Se enviará una notificación al usuario."]);
+    exit; // <--- AÑADIR ESTA LÍNEA
 
 } catch (Exception $e) {
-    // Manejo centralizado de todos los errores
-    $httpCode = $e->getCode() > 0 ? $e->getCode() : 400;
-    http_response_code($httpCode);
+    http_response_code($e->getCode() > 0 ? $e->getCode() : 400);
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    exit; // <--- Y AÑADIR ESTA LÍNEA
 }

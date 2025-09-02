@@ -1,51 +1,81 @@
 <?php
 require __DIR__ . '/bootstrap.php';
 
-// 1. Proteger la página: verificar si el usuario ha iniciado sesión.
+// 1. Proteger la página
 if (!isset($_SESSION['user_is_encargado']) || $_SESSION['user_is_encargado'] !== true) {
     header('Location: login.php');
     exit;
 }
 
-// 2. Conexión a la base de datos
+// 2. Conexión y configuración inicial
 $pdo = get_pdo_connection();
-
-// 3. Obtener solo las reservas pendientes para la tabla
-$estado_filtro = 'pendiente';
-$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 15;
-$offset = ($page - 1) * $perPage;
+$active_tab = $_GET['tab'] ?? 'pendientes';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 
-// Contar el total de reservas pendientes para la paginación
-$countStmt = $pdo->prepare("SELECT COUNT(id) FROM reservas WHERE estado = :estado");
-$countStmt->execute([':estado' => $estado_filtro]);
-$totalRes = $countStmt->fetchColumn();
-$totalPages = $totalRes > 0 ? ceil($totalRes / $perPage) : 1;
+// --- INICIO DE LA CORRECCIÓN ---
+// 3. CALCULAR SIEMPRE LOS TOTALES PARA LAS INSIGNIAS DE LAS PESTAÑAS
+// Estas consultas son muy rápidas y necesarias en cada carga para que los números sean correctos.
+$countStmt_pendientes = $pdo->query("SELECT COUNT(id) FROM reservas WHERE estado = 'pendiente'");
+$totalRes_pendientes = $countStmt_pendientes->fetchColumn();
 
-// Obtener la lista paginada de reservas pendientes
-$stmt = $pdo->prepare(
-    "SELECT * FROM reservas WHERE estado = :estado 
-     ORDER BY fecha ASC, hora_inicio ASC 
-     LIMIT :limit OFFSET :offset"
-);
-$stmt->bindValue(':estado', $estado_filtro, PDO::PARAM_STR);
-$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$reservas = $stmt->fetchAll();
+$countStmt_confirmadas = $pdo->query("SELECT COUNT(id) FROM reservas WHERE estado = 'confirmada' AND fecha >= CURDATE()");
+$totalRes_confirmadas = $countStmt_confirmadas->fetchColumn();
+// --- FIN DE LA CORRECCIÓN ---
 
-// 4. Obtener todos los feriados para la sección de gestión
+// 4. Inicializar variables de datos
+$reservas_pendientes = $reservas_confirmadas = $estadisticas_mensuales = $anios_disponibles = [];
+$totalPages_pendientes = $totalRes_pendientes > 0 ? ceil($totalRes_pendientes / $perPage) : 1;
+$totalPages_confirmadas = $totalRes_confirmadas > 0 ? ceil($totalRes_confirmadas / $perPage) : 1;
+$page_pendientes = $page_confirmadas = 1;
+$anio_seleccionado = date('Y');
+
+// 5. Cargar los DATOS PRINCIPALES (la parte lenta) SOLO para la pestaña activa
+if ($active_tab === 'pendientes') {
+    $page_pendientes = $page;
+    $offset_pendientes = ($page_pendientes - 1) * $perPage;
+    $stmt_pendientes = $pdo->prepare("SELECT * FROM reservas WHERE estado = 'pendiente' ORDER BY fecha ASC, hora_inicio ASC LIMIT :limit OFFSET :offset");
+    $stmt_pendientes->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt_pendientes->bindValue(':offset', $offset_pendientes, PDO::PARAM_INT);
+    $stmt_pendientes->execute();
+    $reservas_pendientes = $stmt_pendientes->fetchAll();
+
+} elseif ($active_tab === 'confirmadas') {
+    $page_confirmadas = $page;
+    $offset_confirmadas = ($page_confirmadas - 1) * $perPage;
+    $stmt_confirmadas = $pdo->prepare("SELECT * FROM reservas WHERE estado = 'confirmada' AND fecha >= CURDATE() ORDER BY fecha ASC, hora_inicio ASC LIMIT :limit OFFSET :offset");
+    $stmt_confirmadas->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt_confirmadas->bindValue(':offset', $offset_confirmadas, PDO::PARAM_INT);
+    $stmt_confirmadas->execute();
+    $reservas_confirmadas = $stmt_confirmadas->fetchAll();
+
+} elseif ($active_tab === 'estadisticas') {
+    $anio_seleccionado = $_GET['anio'] ?? date('Y');
+    $stmt_anios = $pdo->query("SELECT DISTINCT YEAR(fecha) as anio FROM reservas WHERE estado = 'confirmada' ORDER BY anio DESC");
+    $anios_disponibles = $stmt_anios->fetchAll(PDO::FETCH_COLUMN);
+    if (!empty($anios_disponibles)) {
+        $stmt_stats = $pdo->prepare("SELECT MONTH(fecha) AS mes, COUNT(id) AS total FROM reservas WHERE estado = 'confirmada' AND YEAR(fecha) = :anio GROUP BY MONTH(fecha) ORDER BY mes ASC");
+        $stmt_stats->execute([':anio' => $anio_seleccionado]);
+        $stats_raw = $stmt_stats->fetchAll(PDO::FETCH_KEY_PAIR);
+        for ($i = 1; $i <= 12; $i++) {
+            $estadisticas_mensuales[$i] = $stats_raw[$i] ?? 0;
+        }
+    }
+}
+
+// 6. Datos que se cargan siempre (para el calendario)
+$meses_espanol = [1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril', 5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto', 9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'];
 $feriadosStmt = $pdo->query("SELECT id, fecha, descripcion FROM feriados ORDER BY fecha ASC");
 $feriados = $feriadosStmt->fetchAll();
 
-// 5. Variables para la configuración del calendario
+// 7. Variables para el JavaScript del calendario
 $hora_inicio = defined('HORA_INICIO_PERMITIDA') ? HORA_INICIO_PERMITIDA : '08:00:00';
 $hora_fin = defined('HORA_FIN_PERMITIDA') ? HORA_FIN_PERMITIDA : '18:00:00';
 $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5];
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -62,7 +92,6 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
         };
     </script>
 </head>
-
 <body>
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -78,69 +107,149 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
             <div class="col-md-2"></div>
         </div>
 
-        <!--div id="calendar" class="my-5"></div-->
-
-        <h4>Reservas Pendientes de Aprobación (Página <?php echo $page; ?> de <?php echo $totalPages; ?>)</h4>
+        <h4>Gestión de Reservas</h4>
         <div id="mensaje" class="mb-3"></div>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="reservasTable">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Fecha y Hora</th>
-                        <th>Motivo</th>
-                        <th>Bibliografía</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($reservas)): ?>
-                        <tr>
-                            <td colspan="7" class="text-center">¡Excelente! No hay reservas pendientes.</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($reservas as $reserva): ?>
-                            <tr data-id="<?php echo htmlspecialchars($reserva['id']); ?>">
-                                <td><?php echo htmlspecialchars($reserva['id']); ?></td>
-                                <td><?php echo htmlspecialchars($reserva['nombre']); ?></td>
-                                <td><?php echo htmlspecialchars($reserva['fecha'] . ' de ' . $reserva['hora_inicio'] . ' a ' . $reserva['hora_fin']); ?></td>
-                                <td class="text-truncate" style="max-width: 200px;" title="<?php echo htmlspecialchars($reserva['motivo']); ?>"><?php echo htmlspecialchars($reserva['motivo']); ?></td>
-                                <td>
-                                    <?php if ($reserva['bibliografia_archivo']): ?>
-                                        <a href="descargar_bibliografia.php?id=<?php echo $reserva['id']; ?>" target="_blank">Ver Archivo</a>
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
-                                </td>
-                                <td><span class="badge bg-warning text-dark"><?php echo htmlspecialchars($reserva['estado']); ?></span></td>
-                                <td class="acciones">
-                                    <div class="d-flex flex-column gap-1">
-                                        <button class="btn btn-success btn-sm confirmar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Confirmar</button>
-                                        <button class="btn btn-danger btn-sm rechazar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Rechazar</button>
-                                    </div>
-                                </td>
-                            </tr>
+
+        <ul class="nav nav-tabs" id="reservasTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?php echo ($active_tab === 'pendientes') ? 'active' : ''; ?>" href="?tab=pendientes">
+                    Pendientes <span class="badge bg-warning text-dark"><?php echo $totalRes_pendientes; ?></span>
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?php echo ($active_tab === 'confirmadas') ? 'active' : ''; ?>" href="?tab=confirmadas">
+                    Confirmadas <span class="badge bg-success"><?php echo $totalRes_confirmadas; ?></span>
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?php echo ($active_tab === 'estadisticas') ? 'active' : ''; ?>" href="?tab=estadisticas">
+                    Estadísticas
+               </a>
+           </li>
+        </ul>
+
+        <div class="tab-content" id="reservasTabContent">
+            <div class="tab-pane fade <?php echo ($active_tab === 'pendientes') ? 'show active' : ''; ?>" id="pendientes-pane" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr><th>ID</th><th>Nombre</th><th>Fecha y Hora</th><th>Motivo</th><th>Bibliografía</th><th>Estado</th><th>Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($reservas_pendientes)): ?>
+                                <tr><td colspan="7" class="text-center">No hay reservas pendientes.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($reservas_pendientes as $reserva): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($reserva['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($reserva['nombre']); ?></td>
+                                        <td><?php echo htmlspecialchars($reserva['fecha'] . ' de ' . $reserva['hora_inicio'] . ' a ' . $reserva['hora_fin']); ?></td>
+                                        <td class="text-truncate" style="max-width: 200px;" title="<?php echo htmlspecialchars($reserva['motivo']); ?>"><?php echo htmlspecialchars($reserva['motivo']); ?></td>
+                                        <td><?php if ($reserva['bibliografia_archivo']): ?><a href="descargar_bibliografia.php?id=<?php echo $reserva['id']; ?>" target="_blank">Ver Archivo</a><?php else: ?> - <?php endif; ?></td>
+                                        <td><span class="badge bg-warning text-dark"><?php echo htmlspecialchars($reserva['estado']); ?></span></td>
+                                        <td class="acciones"><div class="d-flex flex-column gap-1"><button class="btn btn-success btn-sm confirmar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Confirmar</button><button class="btn btn-danger btn-sm rechazar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Rechazar</button></div></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item <?php echo ($page_pendientes <= 1) ? 'disabled' : ''; ?>"><a class="page-link" href="?tab=pendientes&page=<?php echo $page_pendientes - 1; ?>">Anterior</a></li>
+                        <li class="page-item disabled"><span class="page-link">Página <?php echo $page_pendientes; ?> de <?php echo $totalPages_pendientes; ?></span></li>
+                        <li class="page-item <?php echo ($page_pendientes >= $totalPages_pendientes) ? 'disabled' : ''; ?>"><a class="page-link" href="?tab=pendientes&page=<?php echo $page_pendientes + 1; ?>">Siguiente</a></li>
+                    </ul>
+                </nav>
+            </div>
+
+            <div class="tab-pane fade <?php echo ($active_tab === 'confirmadas') ? 'show active' : ''; ?>" id="confirmadas-pane" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                             <tr><th>ID</th><th>Nombre</th><th>Fecha y Hora</th><th>Motivo</th><th>Bibliografía</th><th>Estado</th><th>Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($reservas_confirmadas)): ?>
+                                <tr><td colspan="7" class="text-center">No hay reservas confirmadas.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($reservas_confirmadas as $reserva): ?>
+                                     <tr>
+                                        <td><?php echo htmlspecialchars($reserva['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($reserva['nombre']); ?></td>
+                                        <td><?php echo htmlspecialchars($reserva['fecha'] . ' de ' . $reserva['hora_inicio'] . ' a ' . $reserva['hora_fin']); ?></td>
+                                        <td class="text-truncate" style="max-width: 200px;" title="<?php echo htmlspecialchars($reserva['motivo']); ?>"><?php echo htmlspecialchars($reserva['motivo']); ?></td>
+                                        <td><?php if ($reserva['bibliografia_archivo']): ?><a href="descargar_bibliografia.php?id=<?php echo $reserva['id']; ?>" target="_blank">Ver Archivo</a><?php else: ?> - <?php endif; ?></td>
+                                        <td><span class="badge bg-success"><?php echo htmlspecialchars($reserva['estado']); ?></span></td>
+                                        <td class="acciones"><button class="btn btn-warning btn-sm cancelar-reserva" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#reservaModal">Cancelar</button></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item <?php echo ($page_confirmadas <= 1) ? 'disabled' : ''; ?>"><a class="page-link" href="?tab=confirmadas&page=<?php echo $page_confirmadas - 1; ?>">Anterior</a></li>
+                        <li class="page-item disabled"><span class="page-link">Página <?php echo $page_confirmadas; ?> de <?php echo $totalPages_confirmadas; ?></span></li>
+                        <li class="page-item <?php echo ($page_confirmadas >= $totalPages_confirmadas) ? 'disabled' : ''; ?>"><a class="page-link" href="?tab=confirmadas&page=<?php echo $page_confirmadas + 1; ?>">Siguiente</a></li>
+                    </ul>
+                </nav>
+            </div>
+        
+            <div class="tab-pane fade <?php echo ($active_tab === 'estadisticas') ? 'show active' : ''; ?>" id="estadisticas-pane" role="tabpanel">
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Reservas Confirmadas por Mes</h5>
+
+            <form action="encargado.php" method="get" class="row g-3 align-items-center my-3">
+                <input type="hidden" name="tab" value="estadisticas">
+                <div class="col-auto">
+                    <label for="anio" class="form-label">Seleccionar Año:</label>
+                </div>
+                <div class="col-auto">
+                    <select name="anio" id="anio" class="form-select">
+                        <?php foreach ($anios_disponibles as $anio): ?>
+                            <option value="<?php echo $anio; ?>" <?php echo ($anio == $anio_seleccionado) ? 'selected' : ''; ?>>
+                                <?php echo $anio; ?>
+                            </option>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Ver</button>
+                </div>
+            </form>
+
+            <?php if (empty($anios_disponibles)): ?>
+                <div class="alert alert-info">No hay datos de reservas confirmadas para mostrar estadísticas.</div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Mes</th>
+                                <th>Cantidad de Reservas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($estadisticas_mensuales as $mes_num => $total): ?>
+                                <tr>
+                                    <td><?php echo $meses_espanol[$mes_num]; ?></td>
+                                    <td><strong><?php echo $total; ?></strong></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>    
         </div>
 
-        <nav class="mt-4" aria-label="Navegación de páginas">
-            <ul class="pagination justify-content-center">
-                <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="?page=<?php echo $page - 1; ?>">Anterior</a>
-                </li>
-                <li class="page-item <?php echo ($page >= $totalPages) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="?page=<?php echo $page + 1; ?>">Siguiente</a>
-                </li>
-            </ul>
-        </nav>
-
         <hr class="my-5">
-
+        
         <div class="card">
             <div class="card-header">
                 <h4 class="mb-0">Gestión de Feriados</h4>
@@ -160,9 +269,7 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
                                 </thead>
                                 <tbody>
                                     <?php if (empty($feriados)): ?>
-                                        <tr>
-                                            <td colspan="3" class="text-center">No hay feriados cargados.</td>
-                                        </tr>
+                                        <tr><td colspan="3" class="text-center">No hay feriados cargados.</td></tr>
                                     <?php else: ?>
                                         <?php foreach ($feriados as $feriado): ?>
                                             <tr data-id="<?php echo $feriado['id']; ?>">
@@ -210,8 +317,9 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
                         <input type="hidden" id="reservaId" name="id">
                         <input type="hidden" id="reservaAccion" name="accion">
                         <div class="mb-3">
-                            <label for="comentario" class="form-label">Comentario (obligatorio al rechazar)</label>
+                            <label for="comentario" class="form-label">Comentario</label>
                             <textarea class="form-control" id="comentario" name="comentario" rows="4"></textarea>
+                            <div class="form-text">El comentario es obligatorio al rechazar o cancelar una reserva.</div>
                         </div>
                         <div id="modalMensaje" class="mb-3"></div>
                         <button type="submit" class="btn btn-primary">Enviar</button>
@@ -220,12 +328,11 @@ $dias_permitidos = defined('DIAS_PERMITIDOS') ? DIAS_PERMITIDOS : [1, 2, 3, 4, 5
             </div>
         </div>
     </div>
-
+    
     <script src="vendor/jquery/jquery.min.js"></script>
     <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="vendor/fullcalendar/main.min.js"></script>
     <script src="vendor/fullcalendar/locales/es.js"></script>
     <script src="assets/js/encargado.js" defer></script>
 </body>
-
 </html>
