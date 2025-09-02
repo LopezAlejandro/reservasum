@@ -80,7 +80,7 @@ CREATE TABLE `reservas` (
   `cargo_solicitante` varchar(100) NOT NULL,
   `carrera` varchar(100) NOT NULL,
   `telefono` varchar(20) NOT NULL,
-  `estado` enum('pendiente','confirmada','rechazada') DEFAULT 'pendiente',
+  `estado` enum('pendiente','confirmada','rechazada','cancelada') DEFAULT 'pendiente',
   `comentario` text DEFAULT NULL,
   `bibliografia_archivo` varchar(255) DEFAULT NULL,
   `creado_en` timestamp NULL DEFAULT current_timestamp()
