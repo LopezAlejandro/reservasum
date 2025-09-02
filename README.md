@@ -100,6 +100,5 @@ define('SISTEMA_HABILITADO', true);
 - [CSS] - Web Framework
 
 ## ✍️ Autor <a name = "authors"></a>
-## ✍️ Autor <a name = "authors"></a>
 
 - [@LopezAlejandro](https://github.com/LopezAlejandro) - Idea & Trabajo inicial
